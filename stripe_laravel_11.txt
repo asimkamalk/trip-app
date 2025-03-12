@@ -1,0 +1,185 @@
+✅ Stripe Information
+------------------------------------------------
+Login URL: https://dashboard.stripe.com/login
+Login Email: tohisig257@agafx.com
+
+👉 Publishable Key:
+pk_test_51PD1A9RtWAW0rCOOQ1WMhYLBb7IydowzxxLMuUGLK2e0Gy8N7VYjDc0EFEisDDJS2SQo8GKD36ehSRgU8dAi6BBa00QZInwARQ
+
+👉 Secret Key:
+sk_test_51PD1A9RtWAW0rCOOyfZbdO3b7PGf2wLy5DA13ZgJuGdGbQIjvHvUHQQCfa0Mxg8MKj2p7iPoAxmMVa8ZaCelxYLY00rA1Wh0kC
+
+👉 Stripe Test Cards: 
+// Go to google and search. 
+https://stripe.com/docs/testing
+
+4242 4242 4242 4242 - visa
+5555 5555 5555 4444 - mastercard
+
+
+
+✅ How to get api keys:
+------------------------------------------------
+👉 Skip the activate payment
+👉 Go to "Developers" from top right side
+👉 Click on "API keys"
+👉 You will get: Publishable key and Secret key
+
+
+
+✅ Install Package:
+------------------------------------------------
+https://github.com/stripe/stripe-php
+composer require stripe/stripe-php
+
+
+
+✅ .env
+------------------------------------------------
+STRIPE_TEST_PK=pk_test_51PD1A9RtWAW0rCOOQ1WMhYLBb7IydowzxxLMuUGLK2e0Gy8N7VYjDc0EFEisDDJS2SQo8GKD36ehSRgU8dAi6BBa00QZInwARQ
+STRIPE_TEST_SK=sk_test_51PD1A9RtWAW0rCOOyfZbdO3b7PGf2wLy5DA13ZgJuGdGbQIjvHvUHQQCfa0Mxg8MKj2p7iPoAxmMVa8ZaCelxYLY00rA1Wh0kC
+
+
+
+✅ Create a file:
+------------------------------------------------
+config/stripe.php
+
+👉 Content: 
+<?php
+return [
+    'stripe_pk' => env('STRIPE_TEST_PK'),
+    'stripe_sk' => env('STRIPE_TEST_SK')
+];
+
+
+
+✅ View: 
+------------------------------------------------
+Product: Mobile Phone
+Price: $20
+<form action="{{ route('stripe') }}" method="post">
+    @csrf
+    <input type="hidden" name="price" value="20">
+    <button type="submit">Pay with Stripe</button>
+</form>
+
+
+✅ web.php
+------------------------------------------------
+use App\Http\Controllers\StripeController;
+
+Route::post('stripe', [StripeController::class, 'stripe'])->name('stripe');
+Route::get('success', [StripeController::class, 'success'])->name('success');
+Route::get('cancel', [StripeController::class, 'cancel'])->name('cancel');
+
+
+
+✅ Create migration: 
+------------------------------------------------
+php artisan make:migration create_payments_table
+
+
+✅ Migration file code:
+------------------------------------------------
+Schema::create('payments', function (Blueprint $table) {
+    $table->id();
+    $table->string('payment_id');
+    $table->string('product_name');
+    $table->string('quantity');
+    $table->string('amount');
+    $table->string('currency');
+    $table->string('payer_name');
+    $table->string('payer_email');
+    $table->string('payment_status');
+    $table->string('payment_method');
+    $table->timestamps();
+});
+
+
+✅ Run Migration:
+------------------------------------------------
+php artisan migrate
+
+
+✅ Create Model:
+------------------------------------------------
+php artisan make:model Payment
+
+
+✅ StripeController.php
+------------------------------------------------
+use App\Models\Payment;
+
+public function stripe(Request $request)
+{
+    // Stripe Documentation: https://stripe.com/docs
+    // Search documentation by "quantity checkout"
+    // Click on "Make line item quantities adjustable"
+    // https://docs.stripe.com/payments/checkout/adjustable-quantity
+    // First code section that comes, paste in below: 
+
+    $stripe = new \Stripe\StripeClient(config('stripe.stripe_sk'));
+    $response = $stripe->checkout->sessions->create([
+        'line_items' => [
+            [
+                'price_data' => [
+                    'currency' => 'usd',
+                    'product_data' => [
+                        'name' => $request->product_name,
+                    ],
+                    'unit_amount' => $request->price*100,
+                ],
+                'quantity' => $request->quantity,
+            ],
+        ],
+        'mode' => 'payment',
+        'success_url' => route('success').'?session_id={CHECKOUT_SESSION_ID}',
+        'cancel_url' => route('cancel'),
+    ]);
+    //dd($response);
+    if(isset($response->id) && $response->id != ''){
+        session()->put('product_name', $request->product_name);
+        session()->put('quantity', $request->quantity);
+        session()->put('price', $request->price);
+        return redirect($response->url);
+    } else {
+        return redirect()->route('cancel');
+    }
+}
+
+public function success(Request $request)
+{
+    if(isset($request->session_id)) {
+
+        $stripe = new \Stripe\StripeClient(config('stripe.stripe_sk'));
+        $response = $stripe->checkout->sessions->retrieve($request->session_id);
+        //dd($response);
+
+        $payment = new Payment();
+        $payment->payment_id = $response->id;
+        $payment->product_name = session()->get('product_name');
+        $payment->quantity = session()->get('quantity');
+        $payment->amount = session()->get('price');
+        $payment->currency = $response->currency;
+        $payment->customer_name = $response->customer_details->name;
+        $payment->customer_email = $response->customer_details->email;
+        $payment->payment_status = $response->status;
+        $payment->payment_method = "Stripe";
+        $payment->save();
+
+        return "Payment is successful";
+
+        session()->forget('product_name');
+        session()->forget('quantity');
+        session()->forget('price');
+
+    } else {
+        return redirect()->route('cancel');
+    }
+}
+
+public function cancel()
+{
+    return "Payment is canceled.";
+}

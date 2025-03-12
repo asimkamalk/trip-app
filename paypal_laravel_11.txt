@@ -1,0 +1,185 @@
+✅ PayPal Information:
+------------------------------------------------
+Dev Account: developer@cwa.com
+Per Account: sb-vhfyz28322584@personal.example.com
+Biz Account: sb-6l43bc27296072@business.example.com
+Client ID: AUepW_R8YYWL7R9nASWIkYSvoLg_3KzYFeb-tt0KMWuWOBwX_JmYlMGKMWbsg_bhPIB2CoNNy5AGk1dm
+Secret: EFuwGqxMAPpSMCoxkmo6-WWnt02EjZFNtdN39Z9Ay-rmruF2gR2MmCPdQn1Rk1fH5z93yd96fB5hqP6s
+
+
+
+✅ Laravel PayPal package installation:
+------------------------------------------------
+Google > Search: srmk PayPal
+Package web link: https://github.com/srmklive/laravel-paypal
+Open their documentation. 
+https://srmklive.github.io/laravel-paypal/docs.html
+
+
+
+✅ Install Package: 
+------------------------------------------------
+composer require srmklive/paypal:~3.0
+
+
+✅ Publish Assets:
+------------------------------------------------
+php artisan vendor:publish --provider "Srmklive\PayPal\Providers\PayPalServiceProvider"
+
+
+✅ .env
+------------------------------------------------
+DB_DATABASE=paypal_integration
+DB_USERNAME=root
+DB_PASSWORD=12345678
+
+#PayPal API Mode
+# Values: sandbox or live (Default: live)
+PAYPAL_MODE=sandbox
+
+#PayPal Setting & API Credentials - sandbox
+PAYPAL_SANDBOX_CLIENT_ID=AUepW_R8YYWL7R9nASWIkYSvoLg_3KzYFeb-tt0KMWuWOBwX_JmYlMGKMWbsg_bhPIB2CoNNy5AGk1dm
+PAYPAL_SANDBOX_CLIENT_SECRET=EFuwGqxMAPpSMCoxkmo6-WWnt02EjZFNtdN39Z9Ay-rmruF2gR2MmCPdQn1Rk1fH5z93yd96fB5hqP6s
+
+#PayPal Setting & API Credentials - live
+# PAYPAL_LIVE_CLIENT_ID=
+# PAYPAL_LIVE_CLIENT_SECRET=
+
+
+✅ View: 
+------------------------------------------------
+<h2>Product: Laptop</h2>
+<h3>Price: $5</h3>
+<form action="{{ route('paypal') }}" method="post">
+    @csrf
+    <input type="hidden" name="price" value="20">
+    <input type="hidden" name="product_name" value="Laptop">
+    <input type="hidden" name="quantity" value="1">
+    <button type="submit">Pay with PayPal</button>
+</form>
+
+
+✅ web.php
+------------------------------------------------
+use App\Http\Controllers\PaypalController;
+Route::post('paypal', [PaypalController::class, 'paypal'])->name('paypal');
+Route::get('success', [PaypalController::class, 'success'])->name('success');
+Route::get('cancel', [PaypalController::class, 'cancel'])->name('cancel');
+
+
+✅ 3 types of searches in documentation to use:
+------------------------------------------------
+Search by: create order
+Search by: create subscription
+Search by: capture payment for order
+
+
+✅ Create migration: 
+------------------------------------------------
+php artisan make:migration create_payments_table
+
+
+✅ Migration file code:
+------------------------------------------------
+Schema::create('payments', function (Blueprint $table) {
+    $table->id();
+    $table->string('payment_id');
+    $table->string('product_name');
+    $table->string('quantity');
+    $table->string('amount');
+    $table->string('currency');
+    $table->string('payer_name');
+    $table->string('payer_email');
+    $table->string('payment_status');
+    $table->string('payment_method');
+    $table->timestamps();
+});
+
+
+✅ Run Migration:
+------------------------------------------------
+php artisan migrate
+
+
+✅ Create Model:
+------------------------------------------------
+php artisan make:model Payment
+
+
+✅ PaypalController.php
+------------------------------------------------
+use App\Models\Payment;
+use Srmklive\PayPal\Services\PayPal as PayPalClient;
+
+class PaypalController extends Controller
+{
+    public function paypal(Request $request)
+    {
+        $provider = new PayPalClient;
+        $provider->setApiCredentials(config('paypal'));
+        $paypalToken = $provider->getAccessToken();
+        $response = $provider->createOrder([
+            "intent" => "CAPTURE",
+            "application_context" => [
+                "return_url" => route('success'),
+                "cancel_url" => route('cancel')
+            ],
+            "purchase_units" => [
+                [
+                    "amount" => [
+                        "currency_code" => "USD",
+                        "value" => $request->price
+                    ]
+                ]
+            ]
+        ]);
+        //dd($response);
+        if(isset($response['id']) && $response['id'] != null) {
+            foreach($response['links'] as $link) {
+                if($link['rel'] == 'approve') {
+                    session()->put('product_name', $request->product_name);
+                    session()->put('quantity', $request->quantity);
+                    return redirect()->away($link['href']);
+                }
+            }
+        } else {
+            return redirect()->route('cancel');
+        }
+    }
+
+    public function success(Request $request)
+    {
+        $provider = new PayPalClient;
+        $provider->setApiCredentials(config('paypal'));
+        $paypalToken = $provider->getAccessToken();
+        $response = $provider->capturePaymentOrder($request->token);
+        //dd($response);
+        if(isset($response['status']) && $response['status'] == 'COMPLETED') {
+            
+            // Insert data into database
+            $payment = new Payment;
+            $payment->payment_id = $response['id'];
+            $payment->product_name = session()->get('product_name');
+            $payment->quantity = session()->get('quantity');
+            $payment->amount = $response['purchase_units'][0]['payments']['captures'][0]['amount']['value'];
+            $payment->currency = $response['purchase_units'][0]['payments']['captures'][0]['amount']['currency_code'];
+            $payment->payer_name = $response['payer']['name']['given_name'];
+            $payment->payer_email = $response['payer']['email_address'];
+            $payment->payment_status = $response['status'];
+            $payment->payment_method = "PayPal";
+            $payment->save();
+
+            return "Payment is successful";
+
+            unset($_SESSION['product_name']);
+            unset($_SESSION['quantity']);
+
+        } else {
+            return redirect()->route('cancel');
+        }
+    }
+    public function cancel()
+    {
+        return "Payment is cancelled.";
+    }
+}

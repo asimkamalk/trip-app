@@ -1,0 +1,897 @@
+-------------------------------------------------
+✅ Install Laravel
+-------------------------------------------------
+composer create-project laravel/laravel multiauth
+cd multiauth
+php artisan serve
+
+
+❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ 
+
+-------------------------------------------------
+✅ config > auth.php
+-------------------------------------------------
+'guards' => [
+    'web' => [
+        'driver' => 'session',
+        'provider' => 'users',
+    ],
+    'admin' => [
+        'driver' => 'session',
+        'provider' => 'admins',
+    ],
+],
+
+'providers' => [
+    'users' => [
+        'driver' => 'eloquent',
+        'model' => env('AUTH_MODEL', App\Models\User::class),
+    ],
+    'admins' => [
+        'driver' => 'eloquent',
+        'model' => env('AUTH_MODEL', App\Models\Admin::class),
+    ],
+],
+
+
+❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ 
+
+-------------------------------------------------
+✅ Migrations
+-------------------------------------------------
+php artisan make:migration create_admins_table
+
+
+-------------------------------------------------
+✅ Migration > users table 
+-------------------------------------------------
+$table->id();
+$table->string('name');
+$table->string('email')->unique();
+$table->string('photo')->nullable();
+$table->string('password');
+$table->string('phone')->nullable();
+$table->string('country')->nullable();
+$table->string('address')->nullable();
+$table->string('state')->nullable();
+$table->string('city')->nullable();
+$table->string('zip')->nullable();
+$table->string('token')->nullable();
+$table->string('status')->default(0)->comment('0=pending, 1=active, 2=suspended');
+$table->timestamps();
+
+
+-------------------------------------------------
+✅ Migration > admins table 
+-------------------------------------------------
+$table->id();
+$table->string('name');
+$table->string('email')->unique();
+$table->string('photo')->nullable();
+$table->string('password');
+$table->string('token')->nullable();
+$table->timestamps();
+
+
+-------------------------------------------------
+✅ Run Migration
+-------------------------------------------------
+php artisan migrate
+
+
+❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ 
+
+-------------------------------------------------
+✅ Models
+-------------------------------------------------
+php artisan make:model Admin
+
+-------------------------------------------------
+✅ app/Models/User.php
+-------------------------------------------------
+use Illuminate\Contracts\Auth\MustVerifyEmail;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+
+class User extends Authenticatable implements MustVerifyEmail
+
+use HasFactory, Notifiable;
+
+protected $fillable = [
+    'name',
+    'email',
+    'photo',
+    'password',
+    'phone',
+    'country',
+    'address',
+    'state',
+    'city',
+    'zip',
+    'token',
+    'status',
+];
+
+-------------------------------------------------
+✅ app/Models/Admin.php
+-------------------------------------------------
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+
+class Admin extends authenticatable
+
+use HasFactory, Notifiable;
+
+
+❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ 
+
+
+-------------------------------------------------
+✅ Seeder
+-------------------------------------------------
+php artisan make:seeder AdminSeeder
+
+
+-------------------------------------------------
+✅ seeders/AdminSeeder.php
+-------------------------------------------------
+use App\Models\Admin;
+use Hash;
+public function run(): void
+{
+    $obj = new Admin;
+    $obj->name = "Admin";
+    $obj->email = "admin@gmail.com";
+    $obj->photo = "";
+    $obj->password = Hash::make('1234');
+    $obj->token = "";
+    $obj->save();
+}
+
+-------------------------------------------------
+✅ seeders/DatabaseSeeder.php
+-------------------------------------------------
+public function run(): void
+{
+    $this->call([AdminSeeder::class]);
+}
+
+-------------------------------------------------
+✅ Run Seeder
+-------------------------------------------------
+php artisan db:seed
+
+
+❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ 
+
+
+-------------------------------------------------
+✅ Email
+-------------------------------------------------
+php artisan make:mail Websitemail
+
+
+-------------------------------------------------
+✅ app/Mail/Websitemail.php
+-------------------------------------------------
+public $subject, $body;
+
+public function __construct($subject,$body)
+{
+    $this->subject = $subject;
+    $this->body = $body;
+}
+
+public function envelope(): Envelope
+{
+    return new Envelope(
+        subject: $this->subject,
+    );
+}
+
+public function content(): Content
+{
+    return new Content(
+        view: 'email'
+    );
+}
+
+-------------------------------------------------
+✅ resources/views/email.blade.php
+-------------------------------------------------
+{!! $body !!}
+
+
+❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ 
+
+
+-------------------------------------------------
+✅ Middlewares
+-------------------------------------------------
+php artisan make:middleware User
+php artisan make:middleware Admin
+
+
+-------------------------------------------------
+✅ app/Http/Middleware/User.php
+-------------------------------------------------
+use Auth;
+public function handle(Request $request, Closure $next): Response
+{
+    if(!Auth::guard('web')->check()) {
+        return redirect()->route('login');
+    }
+    return $next($request);
+}
+
+
+-------------------------------------------------
+✅ app/Http/Middleware/Admin.php
+-------------------------------------------------
+use Auth;
+public function handle(Request $request, Closure $next): Response
+{
+    if(!Auth::guard('admin')->check()) {
+        return redirect()->route('admin_login');
+    }
+    return $next($request);
+}
+
+-------------------------------------------------
+✅ bootstrap/app.php
+-------------------------------------------------
+->withMiddleware(function (Middleware $middleware) {
+    $middleware->alias([
+        'admin' => \App\Http\Middleware\Admin::class,
+        'auth' => \App\Http\Middleware\User::class,
+    ]);
+})
+
+
+❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ 
+
+-------------------------------------------------
+✅ routes/web.php
+-------------------------------------------------
+use App\Http\Controllers\FrontController;
+use App\Http\Controllers\User\UserController;
+use App\Http\Controllers\Admin\AdminController;
+
+// Front
+Route::get('/', [FrontController::class, 'home'])->name('home');
+Route::get('/about', [FrontController::class, 'about'])->name('about');
+
+// User
+Route::middleware('auth')->group(function () {    
+    Route::get('/dashboard',[UserController::class,'dashboard'])->name('dashboard');
+});
+Route::get('/register',[UserController::class,'register'])->name('register');
+Route::post('/register_submit',[UserController::class,'register_submit'])->name('register_submit');
+Route::get('/register_verify/{token}/{email}',[UserController::class,'register_verify'])->name('register_verify');
+Route::get('/login',[UserController::class,'login'])->name('login');
+Route::post('/login',[UserController::class,'login_submit'])->name('login_submit');
+Route::get('/logout',[UserController::class,'logout'])->name('logout');
+Route::get('/forget_password',[UserController::class,'forget_password'])->name('forget_password');
+Route::post('/forget_password',[UserController::class,'forget_password_submit'])->name('forget_password_submit');
+Route::get('/reset-password/{token}/{email}',[UserController::class,'reset_password'])->name('reset_password');
+Route::post('/reset-password/{token}/{email}',[UserController::class,'reset_password_submit'])->name('reset_password_submit');
+
+
+// Admin
+Route::middleware('admin')->prefix('admin')->group(function () {    
+    Route::get('/dashboard',[AdminController::class,'dashboard'])->name('admin_dashboard');
+    Route::get('/profile',[AdminController::class,'profile'])->name('admin_profile');
+    Route::post('/profile',[AdminController::class,'profile_update'])->name('admin_profile_update');
+
+});
+Route::prefix('admin')->group(function () {
+    Route::get('/', function () {return redirect('/admin/login');});
+    Route::get('/login',[AdminController::class,'login'])->name('admin_login');
+    Route::post('/login',[AdminController::class,'login_submit'])->name('admin_login_submit');
+    Route::get('/logout',[AdminController::class,'logout'])->name('admin_logout');
+    Route::get('/forget-password',[AdminController::class,'forget_password'])->name('admin_forget_password');
+    Route::post('/forget_password_submit',[AdminController::class,'forget_password_submit'])->name('admin_forget_password_submit');
+    Route::get('/reset-password/{token}/{email}',[AdminController::class,'reset_password'])->name('admin_reset_password');
+    Route::post('/reset-password/{token}/{email}',[AdminController::class,'reset_password_submit'])->name('admin_reset_password_submit');
+});
+
+❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ 
+
+-------------------------------------------------
+✅ Views
+-------------------------------------------------
+php artisan make:view front/home
+php artisan make:view front/about
+php artisan make:view admin/login
+php artisan make:view admin/dashboard
+php artisan make:view admin/forget-password
+php artisan make:view admin/reset-password
+php artisan make:view user/register
+php artisan make:view user/login
+php artisan make:view user/dashboard
+php artisan make:view user/forget-password
+php artisan make:view user/reset-password
+
+-------------------------------------------------
+✅ views/front/home.blade.php
+-------------------------------------------------
+<a href="{{ route('home') }}">Home</a> | <a href="{{ route('about') }}">About</a> | <a href="{{ route('login') }}">Login</a> | <a href="{{ route('register') }}">Register</a>
+<h2>Home Page</h2>
+
+-------------------------------------------------
+✅ views/front/about.blade.php
+-------------------------------------------------
+<a href="{{ route('home') }}">Home</a> | <a href="{{ route('about') }}">About</a> | <a href="{{ route('login') }}">Login</a> | <a href="{{ route('register') }}">Register</a>
+<h2>About Page</h2>
+
+-------------------------------------------------
+✅ views/admin/login.blade.php
+-------------------------------------------------
+<h2>Admin Login</h2>
+
+@if($errors->any())
+    @foreach ($errors->all() as $error)
+        {{ $error }}<br>
+    @endforeach
+@endif
+
+@if(session('success'))
+    {{ session('success') }}
+@endif
+
+@if(session('error'))
+    {{ session('error') }}
+@endif
+
+<form action="{{ route('admin_login_submit') }}" method="post">
+    @csrf
+    <table>
+        <tr>
+            <td>Email: </td>
+            <td><input type="text" name="email" placeholder="Email"></td>
+        </tr>
+        <tr>
+            <td>Password: </td>
+            <td><input type="password" name="password" placeholder="Password"></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>
+                <button type="submit">Login</button>
+                <div><a href="{{ route('admin_forget_password') }}">Forget Password?</a></div>
+            </td>
+        </tr>
+    </table>
+</form>
+
+
+-------------------------------------------------
+✅ views/admin/dashboard.blade.php
+-------------------------------------------------
+<h2>Admin Dashboard</h2>
+<a href="{{ route('admin_logout') }}">Logout</a>
+
+
+-------------------------------------------------
+✅ views/admin/forget-password.blade.php
+-------------------------------------------------
+<h2>Admin Forget Password</h2>
+
+@if($errors->any())
+    @foreach ($errors->all() as $error)
+        {{ $error }}<br>
+    @endforeach
+@endif
+
+@if(session('success'))
+    {{ session('success') }}
+@endif
+
+@if(session('error'))
+    {{ session('error') }}
+@endif
+
+<form action="{{ route('admin_forget_password_submit') }}" method="post">
+    @csrf
+    <table>
+        <tr>
+            <td>Email: </td>
+            <td><input type="text" name="email" placeholder="Email"></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>
+                <button type="submit">Submit</button>
+                <div><a href="{{ route('admin_login') }}">Back to login page</a></div>
+            </td>
+        </tr>
+    </table>
+</form>
+
+
+-------------------------------------------------
+✅ views/admin/reset-password.blade.php
+-------------------------------------------------
+<h2>Admin Reset Password</h2>
+
+@if($errors->any())
+    @foreach ($errors->all() as $error)
+        {{ $error }}<br>
+    @endforeach
+@endif
+
+@if(session('success'))
+    {{ session('success') }}
+@endif
+
+@if(session('error'))
+    {{ session('error') }}
+@endif
+
+<form action="{{ route('admin_reset_password_submit',[$token,$email]) }}" method="post">
+    @csrf
+    <table>
+        <tr>
+            <td>Password: </td>
+            <td><input type="password" name="password"></td>
+        </tr>
+        <tr>
+            <td>Confirm Password: </td>
+            <td><input type="password" name="confirm_password"></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>
+                <button type="submit">Submit</button>
+            </td>
+        </tr>
+    </table>
+</form>
+
+
+-------------------------------------------------
+✅ views/user/register.blade.php
+-------------------------------------------------
+<a href="{{ route('home') }}">Home</a> | <a href="{{ route('about') }}">About</a> | <a href="{{ route('login') }}">Login</a> | <a href="{{ route('register') }}">Register</a>
+
+<h2>User Registration</h2>
+
+@if($errors->any())
+    @foreach ($errors->all() as $error)
+        {{ $error }}<br>
+    @endforeach
+@endif
+
+@if(session('success'))
+    {{ session('success') }}
+@endif
+
+@if(session('error'))
+    {{ session('error') }}
+@endif
+
+<form action="{{ route('register_submit') }}" method="post">
+    @csrf
+    <table>
+        <tr>
+            <td>Name: </td>
+            <td><input type="text" name="name" placeholder="Name"></td>
+        </tr>
+        <tr>
+            <td>Email: </td>
+            <td><input type="text" name="email" placeholder="Email"></td>
+        </tr>
+        <tr>
+            <td>Password: </td>
+            <td><input type="password" name="password" placeholder="Password"></td>
+        </tr>
+        <tr>
+            <td>Confirm Password: </td>
+            <td><input type="password" name="confirm_password" placeholder="Confirm Password"></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td><button type="submit">Submit</button></td>
+        </tr>
+    </table>
+</form>
+
+-------------------------------------------------
+✅ views/user/login.blade.php
+-------------------------------------------------
+<a href="{{ route('home') }}">Home</a> | <a href="{{ route('about') }}">About</a> | <a href="{{ route('login') }}">Login</a> | <a href="{{ route('register') }}">Register</a>
+
+<h2>User Login</h2>
+
+@if($errors->any())
+    @foreach ($errors->all() as $error)
+        {{ $error }}<br>
+    @endforeach
+@endif
+
+@if(session('success'))
+    {{ session('success') }}
+@endif
+
+@if(session('error'))
+    {{ session('error') }}
+@endif
+
+<form action="{{ route('login_submit') }}" method="post">
+    @csrf
+    <table>
+        <tr>
+            <td>Email: </td>
+            <td><input type="text" name="email" placeholder="Email"></td>
+        </tr>
+        <tr>
+            <td>Password: </td>
+            <td><input type="password" name="password" placeholder="Password"></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>
+                <button type="submit">Login</button>
+                <div><a href="{{ route('forget_password') }}">Forget Password?</a></div>
+            </td>
+        </tr>
+    </table>
+</form>
+
+
+-------------------------------------------------
+✅ views/user/dashboard.blade.php
+-------------------------------------------------
+<h2>User Dashboard</h2>
+<a href="{{ route('logout') }}">Logout</a>
+
+
+-------------------------------------------------
+✅ views/user/forget-password.blade.php
+-------------------------------------------------
+<a href="{{ route('home') }}">Home</a> | <a href="{{ route('about') }}">About</a> | <a href="{{ route('login') }}">Login</a> | <a href="{{ route('register') }}">Register</a>
+
+<h2>User Forget Password</h2>
+
+@if($errors->any())
+    @foreach ($errors->all() as $error)
+        {{ $error }}<br>
+    @endforeach
+@endif
+
+@if(session('success'))
+    {{ session('success') }}
+@endif
+
+@if(session('error'))
+    {{ session('error') }}
+@endif
+
+<form action="{{ route('forget_password_submit') }}" method="post">
+    @csrf
+    <table>
+        <tr>
+            <td>Email: </td>
+            <td><input type="text" name="email" placeholder="Email"></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>
+                <button type="submit">Submit</button>
+                <div><a href="{{ route('login') }}">Back to login page</a></div>
+            </td>
+        </tr>
+    </table>
+</form>
+
+
+-------------------------------------------------
+✅ views/user/reset-password.blade.php
+-------------------------------------------------
+<a href="{{ route('home') }}">Home</a> | <a href="{{ route('about') }}">About</a> | <a href="{{ route('login') }}">Login</a> | <a href="{{ route('register') }}">Register</a>
+
+<h2>User Reset Password</h2>
+
+@if($errors->any())
+    @foreach ($errors->all() as $error)
+        {{ $error }}<br>
+    @endforeach
+@endif
+
+@if(session('success'))
+    {{ session('success') }}
+@endif
+
+@if(session('error'))
+    {{ session('error') }}
+@endif
+
+<form action="{{ route('reset_password_submit',[$token,$email]) }}" method="post">
+    @csrf
+    <table>
+        <tr>
+            <td>Password: </td>
+            <td><input type="password" name="password"></td>
+        </tr>
+        <tr>
+            <td>Confirm Password: </td>
+            <td><input type="password" name="confirm_password"></td>
+        </tr>
+        <tr>
+            <td></td>
+            <td>
+                <button type="submit">Submit</button>
+            </td>
+        </tr>
+    </table>
+</form>
+
+
+
+❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ ❌ 
+
+
+-------------------------------------------------
+✅ Controllers
+-------------------------------------------------
+php artisan make:controller FrontController
+php artisan make:controller Admin/AdminController
+php artisan make:controller User/UserController
+
+
+-------------------------------------------------
+✅ app\Http\Controllers\FrontController.php
+-------------------------------------------------
+public function home()
+{
+    return view('front.home');
+}
+
+public function about()
+{
+    return view('front.about');
+}
+
+-------------------------------------------------
+✅ app\Http\Controllers\Admin\AdminController.php
+-------------------------------------------------
+use Auth;
+use Hash;
+use App\Models\Admin;
+use App\Mail\Websitemail;
+
+public function dashboard()
+{
+    return view('admin.dashboard');
+}
+
+public function login()
+{
+    return view('admin.login');
+}
+
+public function login_submit(Request $request)
+{
+    $request->validate([
+        'email' => ['required', 'email'],
+        'password' => ['required'],
+    ]);
+
+    $check = $request->all();
+    $data = [
+        'email' => $check['email'],
+        'password' => $check['password']
+    ];
+
+    if(Auth::guard('admin')->attempt($data)) {
+        return redirect()->route('admin_dashboard');
+    } else {
+        return redirect()->route('admin_login')->with('error','The information you entered is incorrect! Please try again!');
+    }
+}
+public function logout()
+{
+    Auth::guard('admin')->logout();
+    return redirect()->route('admin_login')->with('success','Logout is successful!');
+}
+
+public function forget_password()
+{
+    return view('admin.forget-password');
+}
+
+public function forget_password_submit(Request $request)
+{
+    $request->validate([
+        'email' => ['required', 'email'],
+    ]);
+
+    $admin = Admin::where('email',$request->email)->first();
+    if(!$admin) {
+        return redirect()->back()->with('error','Email is not found');
+    }
+
+    $token = hash('sha256',time());
+    $admin->token = $token;
+    $admin->update();
+
+    $reset_link = url('admin/reset-password/'.$token.'/'.$request->email);
+    $subject = "Password Reset";
+    $message = "To reset password, please click on the link below:<br>";
+    $message .= "<a href='".$reset_link."'>Click Here</a>";
+
+    \Mail::to($request->email)->send(new Websitemail($subject,$message));
+
+    return redirect()->back()->with('success','We have sent a password reset link to your email. Please check your email. If you do not find the email in your inbox, please check your spam folder.');
+}
+
+public function reset_password($token,$email)
+{
+    $admin = Admin::where('email',$email)->where('token',$token)->first();
+    if(!$admin) {
+        return redirect()->route('admin_login')->with('error','Token or email is not correct');
+    }
+    return view('admin.reset-password', compact('token','email'));
+}
+
+public function reset_password_submit(Request $request, $token, $email)
+{
+    $request->validate([
+        'password' => ['required'],
+        'confirm_password' => ['required','same:password'],
+    ]);
+
+    $admin = Admin::where('email',$request->email)->where('token',$request->token)->first();
+    $admin->password = Hash::make($request->password);
+    $admin->token = "";
+    $admin->update();
+
+    return redirect()->route('admin_login')->with('success','Password reset is successful. You can login now.');
+}
+
+
+-------------------------------------------------
+✅ app\Http\Controllers\User\UserController.php
+-------------------------------------------------
+use Auth;
+use Hash;
+use App\Models\User;
+use App\Mail\Websitemail;
+
+public function dashboard()
+{
+    return view('user.dashboard');
+}
+
+public function login()
+{
+    return view('user.login');
+}
+
+public function login_submit(Request $request)
+{
+    $request->validate([
+        'email' => ['required', 'email'],
+        'password' => ['required'],
+    ]);
+
+    $check = $request->all();
+    $data = [
+        'email' => $check['email'],
+        'password' => $check['password'],
+        'status' => 1,
+    ];
+
+    if(Auth::guard('web')->attempt($data)) {
+        return redirect()->route('dashboard');
+    } else {
+        return redirect()->route('login')->with('error','The information you entered is incorrect! Please try again!');
+    }
+}
+public function logout()
+{
+    Auth::guard('web')->logout();
+    return redirect()->route('login')->with('success','Logout is successful!');
+}
+
+public function register()
+{
+    return view('user.register');
+}
+
+public function register_submit(Request $request)
+{
+    $request->validate([
+        'name' => ['required'],
+        'email' => ['required', 'email', 'unique:users'],
+        'password' => ['required'],
+        'confirm_password' => ['required','same:password'],
+    ]);
+
+    $user = new User();
+    $user->name = $request->name;
+    $user->email = $request->email;
+    $user->password = Hash::make($request->password);
+    $token = hash('sha256',time());
+    $user->token = $token;
+    $user->save();
+
+    $verification_link = url('register_verify/'.$token.'/'.$request->email);
+    $subject = "Registration Verification";
+    $message = "To complete registration, please click on the link below:<br>";
+    $message .= "<a href='".$verification_link."'>Click Here</a>";
+
+    \Mail::to($request->email)->send(new Websitemail($subject,$message));
+
+    return redirect()->back()->with('success','Your registration is completed. Please check your email for verification. If you do not find the email in your inbox, please check your spam folder.');
+}
+
+public function register_verify($token,$email)
+{
+    $user = User::where('token',$token)->where('email',$email)->first();
+    if(!$user) {
+        return redirect()->route('login');
+    }
+    $user->token = '';
+    $user->status = 1;
+    $user->update();
+
+    return redirect()->route('login')->with('success', 'Your email is verified. You can login now.');
+}
+
+public function forget_password()
+{
+    return view('user.forget-password');
+}
+
+public function forget_password_submit(Request $request)
+{
+    $request->validate([
+        'email' => ['required', 'email'],
+    ]);
+
+    $user = User::where('email',$request->email)->first();
+    if(!$user) {
+        return redirect()->back()->with('error','Email is not found');
+    }
+
+    $token = hash('sha256',time());
+    $user->token = $token;
+    $user->update();
+
+    $reset_link = url('reset-password/'.$token.'/'.$request->email);
+    $subject = "Password Reset";
+    $message = "To reset password, please click on the link below:<br>";
+    $message .= "<a href='".$reset_link."'>Click Here</a>";
+
+    \Mail::to($request->email)->send(new Websitemail($subject,$message));
+
+    return redirect()->back()->with('success','We have sent a password reset link to your email. Please check your email. If you do not find the email in your inbox, please check your spam folder.');
+}
+
+public function reset_password($token,$email)
+{
+    $user = User::where('email',$email)->where('token',$token)->first();
+    if(!$user) {
+        return redirect()->route('login')->with('error','Token or email is not correct');
+    }
+    return view('user.reset-password', compact('token','email'));
+}
+
+public function reset_password_submit(Request $request, $token, $email)
+{
+    $request->validate([
+        'password' => ['required'],
+        'confirm_password' => ['required','same:password'],
+    ]);
+
+    $user = User::where('email',$request->email)->where('token',$request->token)->first();
+    $user->password = Hash::make($request->password);
+    $user->token = "";
+    $user->update();
+
+    return redirect()->route('login')->with('success','Password reset is successful. You can login now.');
+}
